@@ -2,9 +2,7 @@ import { GetCommand, PutCommand } from "@aws-sdk/lib-dynamodb";
 import { randomUUID } from "crypto";
 import { dynamo, TABLE } from "./_db.js";
 
-function isIntInRange(v, min, max) {
-  return Number.isInteger(v) && v >= min && v <= max;
-}
+const VALID_RATINGS = new Set([1, 2, 4, 6, 9]);
 
 function validateRatings(ratings, expectedKeys) {
   if (typeof ratings !== "object" || ratings === null || Array.isArray(ratings)) {
@@ -15,8 +13,8 @@ function validateRatings(ratings, expectedKeys) {
     return "keys do not match expected items";
   }
   for (const k of keys) {
-    if (!isIntInRange(ratings[k], 1, 9)) {
-      return `rating for "${k}" must be an integer from 1 to 9`;
+    if (!Number.isInteger(ratings[k]) || !VALID_RATINGS.has(ratings[k])) {
+      return `rating for "${k}" must be one of: 1, 2, 4, 6, 9`;
     }
   }
   return null;
@@ -47,25 +45,28 @@ export default async function handler(req, res) {
       return res.status(404).json({ error: "Session not found" });
     }
 
-    const { items } = session.Item;
+    // Extract title strings for validation (items may be objects or legacy strings)
+    const itemTitles = session.Item.items.map((i) =>
+      typeof i === "string" ? i : i.title
+    );
 
-    if (!items.includes(bestItem)) {
+    if (!itemTitles.includes(bestItem)) {
       return res.status(400).json({ error: "bestItem is not in this session's items" });
     }
-    if (!items.includes(worstItem)) {
+    if (!itemTitles.includes(worstItem)) {
       return res.status(400).json({ error: "worstItem is not in this session's items" });
     }
     if (bestItem === worstItem) {
       return res.status(400).json({ error: "bestItem and worstItem must be different" });
     }
 
-    const bestToOthersKeys = items.filter((i) => i !== bestItem);
+    const bestToOthersKeys = itemTitles.filter((i) => i !== bestItem);
     const err1 = validateRatings(bestToOthers, bestToOthersKeys);
     if (err1) {
       return res.status(400).json({ error: `bestToOthers: ${err1}` });
     }
 
-    const othersToWorstKeys = items.filter((i) => i !== worstItem);
+    const othersToWorstKeys = itemTitles.filter((i) => i !== worstItem);
     const err2 = validateRatings(othersToWorst, othersToWorstKeys);
     if (err2) {
       return res.status(400).json({ error: `othersToWorst: ${err2}` });

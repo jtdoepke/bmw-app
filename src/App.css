@@ -380,6 +380,40 @@ textarea {
   color: var(--white);
 }
 
+/* ── Linguistic Scale (Fuzzy BWM) ── */
+.linguistic-scale {
+  display: flex;
+  gap: 0.35rem;
+  flex: 1;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.linguistic-btn {
+  padding: 0.45rem 0.75rem;
+  border: 1.5px solid var(--gray-200);
+  border-radius: 20px;
+  background: var(--white);
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--gray-500);
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.linguistic-btn:hover {
+  border-color: var(--gold);
+  color: var(--navy);
+}
+
+.linguistic-btn.active {
+  background: var(--navy);
+  border-color: var(--navy);
+  color: var(--white);
+}
+
 .scale-labels {
   display: flex;
   justify-content: space-between;
@@ -417,7 +451,18 @@ textarea {
   position: relative;
 }
 
+.bar-fill-range {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  border-radius: 6px;
+  background: rgba(26, 39, 68, 0.12);
+  transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
 .bar-fill {
+  position: relative;
   height: 100%;
   border-radius: 6px;
   background: linear-gradient(135deg, var(--navy) 0%, var(--navy-light) 100%);
@@ -439,6 +484,13 @@ textarea {
   font-weight: 700;
   color: var(--navy);
   margin-left: 0.5rem;
+  white-space: nowrap;
+}
+
+.fuzzy-range {
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: var(--gray-400);
 }
 
 .priority-badge {
@@ -600,6 +652,15 @@ textarea {
     justify-content: flex-start;
   }
 
+  .linguistic-scale {
+    justify-content: flex-start;
+  }
+
+  .linguistic-btn {
+    font-size: 0.74rem;
+    padding: 0.4rem 0.6rem;
+  }
+
   .scale-labels {
     padding: 0;
   }
@@ -608,4 +669,85 @@ textarea {
     min-width: 100px;
     font-size: 0.82rem;
   }
+}
+
+/* Item form (CreateSession) */
+.item-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.item-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border: 1px solid var(--gray-200);
+  border-radius: 8px;
+  background: var(--cream);
+}
+
+.item-row-fields {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.item-row-fields input,
+.item-row-fields textarea {
+  width: 100%;
+  margin: 0;
+}
+
+.item-description-input {
+  font-size: 0.85rem !important;
+  color: var(--gray-500);
+  resize: vertical;
+  min-height: 2.5rem;
+}
+
+.char-count {
+  font-size: 0.72rem;
+  color: var(--gray-400);
+  text-align: right;
+  display: block;
+}
+
+.item-remove-btn {
+  background: none;
+  border: none;
+  font-size: 1.25rem;
+  color: var(--gray-400);
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  line-height: 1;
+  border-radius: 4px;
+  margin-top: 0.25rem;
+}
+
+.item-remove-btn:hover:not(:disabled) {
+  color: var(--error);
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.item-remove-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.add-item-btn {
+  align-self: flex-start;
+}
+
+/* Item descriptions in Participate cards */
+.item-description {
+  display: block;
+  font-size: 0.78rem;
+  color: var(--gray-400);
+  margin-top: 0.25rem;
+  font-weight: 400;
+  line-height: 1.3;
 }

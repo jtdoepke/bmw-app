@@ -25,7 +25,11 @@ export default async function handler(req, res) {
     }
 
     const { sessionId, title, items, createdAt } = result.Item;
-    return res.status(200).json({ sessionId, title, items, createdAt });
+    // Normalize legacy string items to { title, description } objects
+    const normalizedItems = items.map((i) =>
+      typeof i === "string" ? { title: i, description: "" } : i
+    );
+    return res.status(200).json({ sessionId, title, items: normalizedItems, createdAt });
   } catch (err) {
     console.error("Get session error:", err);
     return res.status(500).json({ error: "Internal server error" });

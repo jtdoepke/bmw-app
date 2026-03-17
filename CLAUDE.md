@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Is
 
-A Best-Worst Method (BWM) group prioritization web app. Users create sessions with items to rank, share a link, participants complete a comparison wizard, and results show aggregated priority weights with consistency scores.
+A Fuzzy Best-Worst Method (BWM) group prioritization web app. Users create sessions with items to rank, share a link, participants complete a comparison wizard using linguistic labels, and results show aggregated priority weights with fuzzy uncertainty ranges and consistency scores.
 
 ## Architecture
 
@@ -46,6 +46,26 @@ Requires a `.env` file with `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_R
 | `/api/submit-response` | POST | Submit a participant's BWM comparisons |
 | `/api/get-results?id=` | GET | Fetch all responses for a session |
 
+## BWM Solver
+
+The solver (`src/lib/bwm-solver.js`) supports two modes, auto-detected from input values:
+
+**Fuzzy BWM** (current default): Uses a 5-option linguistic scale mapped to Triangular Fuzzy Numbers (TFNs). Valid rating values are `{1, 2, 4, 6, 9}`, stored as integers in DynamoDB. The solver runs a geometric mean approximation 3 times (once per TFN component: lower, modal, upper), defuzzifies via Center of Gravity `(l + m + u) / 3`, then normalizes. Returns both crisp weights and fuzzy weight triplets `[l, m, u]` per item.
+
+| Linguistic label | Stored value | TFN (l, m, u) |
+|---|---|---|
+| Equal | 1 | (1, 1, 1) |
+| Slightly more | 2 | (1, 2, 3) |
+| Moderately more | 4 | (2, 4, 6) |
+| Strongly more | 6 | (4, 6, 8) |
+| Absolutely more | 9 | (7, 9, 9) |
+
+**Crisp BWM** (legacy): Accepts any integer 1-9. Used automatically for old sessions with ratings outside `{1, 2, 4, 6, 9}`.
+
+Exported functions: `solveBWM`, `aggregateWeights`, `aggregateFuzzyWeights`, `weightsToPriorities`.
+
+Consistency ratio thresholds: Excellent ≤0.10, Good ≤0.25, Fair ≤0.40, Poor >0.40.
+
 ## Deployment
 
 - Hosted on Vercel: https://bwm-app.vercel.app
@@ -58,4 +78,6 @@ Requires a `.env` file with `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_R
 - No linter, formatter, or test framework is configured
 - No TypeScript — all files are `.jsx` / `.js`
 - `vercel.json` rewrites all non-API routes to `index.html` for client-side routing
-- The BWM solver uses a geometric mean approximation (not full linear programming) — consistency ratio thresholds: Excellent ≤0.10, Good ≤0.25, Fair ≤0.40, Poor >0.40
+- API validation in `api/submit-response.js` enforces ratings are in `{1, 2, 4, 6, 9}`
+- The `Participate` page uses a `LinguisticScale` component (5 pill buttons) for comparisons
+- Results page shows fuzzy uncertainty ranges `[l%–u%]` alongside defuzzified weights, with a lighter bar extension visualizing the spread

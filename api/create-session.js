@@ -14,7 +14,16 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Title and items array required" });
     }
 
-    const cleanItems = [...new Set(items.map((i) => String(i).trim()).filter(Boolean))];
+    // Normalize items to { title, description } objects, deduplicate by title
+    const seen = new Map();
+    for (const item of items) {
+      if (typeof item !== "object" || !item || !item.title) continue;
+      const t = String(item.title).trim();
+      if (!t) continue;
+      const desc = String(item.description || "").trim().slice(0, 1000);
+      seen.set(t, { title: t, description: desc });
+    }
+    const cleanItems = [...seen.values()];
 
     if (cleanItems.length < 3) {
       return res.status(400).json({ error: "At least 3 unique items required" });

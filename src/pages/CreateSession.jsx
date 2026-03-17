@@ -1,35 +1,50 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
+const emptyItem = () => ({ title: "", description: "" });
+
 export default function CreateSession() {
   const navigate = useNavigate();
   const [title, setTitle] = useState("");
-  const [itemsText, setItemsText] = useState("");
+  const [items, setItems] = useState([emptyItem(), emptyItem(), emptyItem()]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  const updateItem = (index, field, value) => {
+    setItems((prev) =>
+      prev.map((item, i) => (i === index ? { ...item, [field]: value } : item))
+    );
+  };
+
+  const addItem = () => {
+    if (items.length < 15) setItems((prev) => [...prev, emptyItem()]);
+  };
+
+  const removeItem = (index) => {
+    if (items.length > 3) setItems((prev) => prev.filter((_, i) => i !== index));
+  };
+
   const handleSubmit = async () => {
-    const items = itemsText
-      .split("\n")
-      .map((s) => s.trim())
-      .filter(Boolean);
+    const filled = items
+      .map((i) => ({ title: i.title.trim(), description: i.description.trim() }))
+      .filter((i) => i.title);
 
     if (!title.trim()) {
       setError("Please enter a session title.");
       return;
     }
-    if (items.length < 3) {
-      setError("Please enter at least 3 items (one per line).");
+    if (filled.length < 3) {
+      setError("Please enter at least 3 items with titles.");
       return;
     }
-    if (items.length > 15) {
+    if (filled.length > 15) {
       setError("Please limit to 15 items or fewer for practical comparisons.");
       return;
     }
 
-    const uniqueItems = [...new Set(items)];
-    if (uniqueItems.length < items.length) {
-      setError("Duplicate items found. Please remove duplicates.");
+    const titles = filled.map((i) => i.title);
+    if (new Set(titles).size < titles.length) {
+      setError("Duplicate item titles found. Please make each title unique.");
       return;
     }
 
@@ -40,7 +55,7 @@ export default function CreateSession() {
       const res = await fetch("/api/create-session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: title.trim(), items }),
+        body: JSON.stringify({ title: title.trim(), items: filled }),
       });
 
       if (!res.ok) throw new Error("Failed to create session");
@@ -54,12 +69,8 @@ export default function CreateSession() {
     }
   };
 
-  const itemCount = itemsText
-    .split("\n")
-    .map((s) => s.trim())
-    .filter(Boolean).length;
-
-  const comparisonCount = itemCount > 0 ? 2 * itemCount - 3 : 0;
+  const filledCount = items.filter((i) => i.title.trim()).length;
+  const comparisonCount = filledCount > 0 ? 2 * filledCount - 3 : 0;
 
   return (
     <div>
@@ -81,22 +92,58 @@ export default function CreateSession() {
         </div>
 
         <div className="field">
-          <label htmlFor="items">Items to Prioritize</label>
-          <textarea
-            id="items"
-            placeholder={"Enter one item per line, e.g.:\nUser authentication\nDashboard redesign\nAPI documentation\nMobile support\nPerformance optimization"}
-            value={itemsText}
-            onChange={(e) => setItemsText(e.target.value)}
-          />
+          <label>Items to Prioritize</label>
+          <div className="item-list">
+            {items.map((item, i) => (
+              <div className="item-row" key={i}>
+                <div className="item-row-fields">
+                  <input
+                    type="text"
+                    placeholder={`Item ${i + 1} title`}
+                    value={item.title}
+                    onChange={(e) => updateItem(i, "title", e.target.value)}
+                  />
+                  <textarea
+                    className="item-description-input"
+                    placeholder="Description (optional)"
+                    value={item.description}
+                    maxLength={1000}
+                    rows={2}
+                    onChange={(e) => updateItem(i, "description", e.target.value)}
+                  />
+                  {item.description.length > 0 && (
+                    <span className="char-count">{item.description.length}/1000</span>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  className="item-remove-btn"
+                  onClick={() => removeItem(i)}
+                  disabled={items.length <= 3}
+                  title="Remove item"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+          <button
+            type="button"
+            className="btn btn-sm btn-outline add-item-btn"
+            onClick={addItem}
+            disabled={items.length >= 15}
+          >
+            + Add Item
+          </button>
           <p className="field-hint">
-            {itemCount > 0 ? (
+            {filledCount > 0 ? (
               <>
-                {itemCount} item{itemCount !== 1 && "s"} →{" "}
+                {filledCount} item{filledCount !== 1 && "s"} →{" "}
                 {comparisonCount} comparison{comparisonCount !== 1 && "s"} per
                 participant
               </>
             ) : (
-              "Enter 3–15 items, one per line"
+              "Enter 3–15 items"
             )}
           </p>
         </div>

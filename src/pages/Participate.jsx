@@ -3,6 +3,18 @@ import { useParams, Link } from "react-router-dom";
 
 const STEPS = ["Name", "Best", "Worst", "Best → Others", "Others → Worst", "Submit"];
 
+const LINGUISTIC_OPTIONS = [
+  { value: 1, label: "Equal" },
+  { value: 2, label: "Slightly more" },
+  { value: 4, label: "Moderately more" },
+  { value: 6, label: "Strongly more" },
+  { value: 9, label: "Absolutely more" },
+];
+
+const LINGUISTIC_LABELS = Object.fromEntries(
+  LINGUISTIC_OPTIONS.map((o) => [o.value, o.label])
+);
+
 function Stepper({ current }) {
   return (
     <div className="stepper">
@@ -16,17 +28,17 @@ function Stepper({ current }) {
   );
 }
 
-function RatingScale({ value, onChange }) {
+function LinguisticScale({ value, onChange }) {
   return (
-    <div className="rating-scale">
-      {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => (
+    <div className="linguistic-scale">
+      {LINGUISTIC_OPTIONS.map((opt) => (
         <button
-          key={n}
-          className={`rating-btn ${value === n ? "active" : ""}`}
-          onClick={() => onChange(n)}
+          key={opt.value}
+          className={`linguistic-btn ${value === opt.value ? "active" : ""}`}
+          onClick={() => onChange(opt.value)}
           type="button"
         >
-          {n}
+          {opt.label}
         </button>
       ))}
     </div>
@@ -96,7 +108,9 @@ export default function Participate() {
     );
   }
 
-  const { items, title } = session;
+  const { items: itemObjects, title } = session;
+  const items = itemObjects.map((i) => i.title);
+  const descMap = Object.fromEntries(itemObjects.map((i) => [i.title, i.description]));
   const othersFromBest = items.filter((i) => i !== bestItem);
   const othersFromWorst = items.filter((i) => i !== worstItem);
 
@@ -179,6 +193,9 @@ export default function Participate() {
                   }}
                 >
                   {item}
+                  {descMap[item] && (
+                    <span className="item-description">{descMap[item]}</span>
+                  )}
                 </div>
               ))}
             </div>
@@ -200,6 +217,9 @@ export default function Participate() {
                   onClick={() => item !== bestItem && setWorstItem(item)}
                 >
                   {item}
+                  {descMap[item] && (
+                    <span className="item-description">{descMap[item]}</span>
+                  )}
                   {item === bestItem && (
                     <span style={{ display: "block", fontSize: "0.72rem", color: "var(--gray-400)" }}>
                       (your best)
@@ -216,18 +236,13 @@ export default function Participate() {
           <div>
             <h2>How much more important is "{bestItem}"?</h2>
             <p>
-              Rate how much more important <strong>{bestItem}</strong> is
-              compared to each other item. 1 = equally important, 9 = vastly
-              more important.
+              Select how much more important <strong>{bestItem}</strong> is
+              compared to each other item.
             </p>
-            <div className="scale-labels">
-              <span>Equal</span>
-              <span>Vastly more important</span>
-            </div>
             {othersFromBest.map((item) => (
               <div className="rating-row" key={item}>
-                <span className="rating-item-name">{item}</span>
-                <RatingScale
+                <span className="rating-item-name" title={descMap[item] || undefined}>{item}</span>
+                <LinguisticScale
                   value={bestToOthers[item] || null}
                   onChange={(v) =>
                     setBestToOthers((prev) => ({ ...prev, [item]: v }))
@@ -243,18 +258,13 @@ export default function Participate() {
           <div>
             <h2>How much more important is each item than "{worstItem}"?</h2>
             <p>
-              Rate how much more important each item is compared to{" "}
-              <strong>{worstItem}</strong>. 1 = equally important, 9 = vastly
-              more important.
+              Select how much more important each item is compared to{" "}
+              <strong>{worstItem}</strong>.
             </p>
-            <div className="scale-labels">
-              <span>Equal</span>
-              <span>Vastly more important</span>
-            </div>
             {othersFromWorst.map((item) => (
               <div className="rating-row" key={item}>
-                <span className="rating-item-name">{item}</span>
-                <RatingScale
+                <span className="rating-item-name" title={descMap[item] || undefined}>{item}</span>
+                <LinguisticScale
                   value={othersToWorst[item] || null}
                   onChange={(v) =>
                     setOthersToWorst((prev) => ({ ...prev, [item]: v }))
@@ -282,7 +292,7 @@ export default function Participate() {
               <h3>"{bestItem}" compared to others</h3>
               {othersFromBest.map((item) => (
                 <div key={item} style={{ fontSize: "0.9rem", padding: "0.2rem 0" }}>
-                  vs {item}: <strong>{bestToOthers[item]}</strong>
+                  vs {item}: <strong>{LINGUISTIC_LABELS[bestToOthers[item]] || bestToOthers[item]}</strong>
                 </div>
               ))}
             </div>
@@ -290,7 +300,7 @@ export default function Participate() {
               <h3>Each item compared to "{worstItem}"</h3>
               {othersFromWorst.map((item) => (
                 <div key={item} style={{ fontSize: "0.9rem", padding: "0.2rem 0" }}>
-                  {item}: <strong>{othersToWorst[item]}</strong>
+                  {item}: <strong>{LINGUISTIC_LABELS[othersToWorst[item]] || othersToWorst[item]}</strong>
                 </div>
               ))}
             </div>

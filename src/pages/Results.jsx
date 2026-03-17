@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
-import { solveBWM, aggregateWeights, weightsToPriorities } from "../lib/bwm-solver";
+import { solveBWM, aggregateWeights, aggregateFuzzyWeights, weightsToPriorities } from "../lib/bwm-solver";
 
 export default function Results() {
   const { sessionId } = useParams();
@@ -62,7 +62,9 @@ export default function Results() {
     );
   }
 
-  const { items, title } = session;
+  const { items: itemObjects, title } = session;
+  const items = itemObjects.map((i) => i.title);
+  const descMap = Object.fromEntries(itemObjects.map((i) => [i.title, i.description]));
 
   // Solve BWM for each participant
   const individualResults = responses.map((r) => {
@@ -80,6 +82,8 @@ export default function Results() {
   const hasResponses = individualResults.length > 0;
   const aggWeights = hasResponses ? aggregateWeights(individualResults, items) : {};
   const priorities = hasResponses ? weightsToPriorities(aggWeights) : {};
+  const hasFuzzy = individualResults.some((r) => r.fuzzyWeights);
+  const aggFuzzy = hasFuzzy ? aggregateFuzzyWeights(individualResults, items) : {};
 
   // Sort items by weight descending
   const sorted = hasResponses
@@ -148,13 +152,21 @@ export default function Results() {
               {sorted.map(([item, weight], i) => {
                 const pct = (weight / maxWeight) * 100;
                 const priority = priorities[item];
+                const fuzzy = aggFuzzy[item];
+                const upperPct = fuzzy ? (fuzzy[2] / maxWeight) * 100 : pct;
                 return (
                   <div className="bar-row" key={item}>
                     <span className={`priority-badge priority-${priority}`}>
                       {i + 1}
                     </span>
-                    <span className="bar-label">{item}</span>
+                    <span className="bar-label" title={descMap[item] || undefined}>{item}</span>
                     <div className="bar-track">
+                      {hasFuzzy && (
+                        <div
+                          className="bar-fill-range"
+                          style={{ width: `${Math.max(upperPct, 8)}%` }}
+                        />
+                      )}
                       <div className="bar-fill" style={{ width: `${Math.max(pct, 8)}%` }}>
                         {pct > 25 && (
                           <span className="bar-value">
@@ -163,11 +175,14 @@ export default function Results() {
                         )}
                       </div>
                     </div>
-                    {pct <= 25 && (
-                      <span className="bar-value-outside">
-                        {(weight * 100).toFixed(1)}%
-                      </span>
-                    )}
+                    <span className="bar-value-outside">
+                      {pct <= 25 && <>{(weight * 100).toFixed(1)}%</>}
+                      {hasFuzzy && fuzzy && (
+                        <span className="fuzzy-range">
+                          {" "}[{(fuzzy[0] * 100).toFixed(0)}–{(fuzzy[2] * 100).toFixed(0)}%]
+                        </span>
+                      )}
+                    </span>
                   </div>
                 );
               })}
@@ -208,7 +223,7 @@ export default function Results() {
                 <tbody>
                   {sorted.map(([item]) => (
                     <tr key={item} style={{ borderBottom: "1px solid var(--gray-100)" }}>
-                      <td style={{ padding: "0.5rem 0.75rem", fontWeight: 500 }}>
+                      <td style={{ padding: "0.5rem 0.75rem", fontWeight: 500 }} title={descMap[item] || undefined}>
                         {item}
                       </td>
                       {individualResults.map((r) => (
