@@ -62,6 +62,10 @@ export default function Participate() {
   const [othersToWorst, setOthersToWorst] = useState({});
 
   useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [step]);
+
+  useEffect(() => {
     fetch(`/api/get-session?id=${sessionId}`)
       .then((r) => {
         if (!r.ok) throw new Error("Session not found");
