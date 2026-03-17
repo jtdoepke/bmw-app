@@ -13,7 +13,7 @@ React frontend (Vite) → Vercel Serverless Functions → DynamoDB
 ```
 
 - **Frontend**: React 18 + React Router v6 + Vite, no TypeScript
-- **API**: Vercel serverless functions in `api/` (CommonJS-style default exports), share a DynamoDB client via `api/_db.js`
+- **API**: Vercel serverless functions in `api/` (ES module default exports), share a DynamoDB client via `api/_db.js`
 - **Database**: DynamoDB single-table design — partition key `PK`, sort key `SK`. Sessions stored as `SESSION#<id> / META`, responses as `SESSION#<id> / RESP#<id>`
 - **BWM Solver**: Runs client-side in the browser (`src/lib/bwm-solver.js`), not on the server
 
@@ -45,6 +45,13 @@ Requires a `.env` file with `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_R
 | `/api/get-session?id=` | GET | Fetch session metadata |
 | `/api/submit-response` | POST | Submit a participant's BWM comparisons |
 | `/api/get-results?id=` | GET | Fetch all responses for a session |
+
+## Deployment
+
+- Hosted on Vercel: https://bwm-app.vercel.app
+- DynamoDB table: `jdoepke-bwm-sessions` in `us-east-2` (Mintel dev account, `089720790877`)
+- IAM user: `jdoepke-best-worst-method-table-access` (scoped to the table)
+- Deploy: `vercel --prod`
 
 ## Key Details
 
