@@ -183,8 +183,10 @@ export default function Participate() {
         {/* Step 1: Pick Best */}
         {step === 1 && (
           <div>
-            <h2>Which item is most important?</h2>
-            <p>Select the single item you consider the highest priority.</p>
+            <div className="rating-sticky-header">
+              <h2>Which item is most important?</h2>
+              <p>Select the single item you consider the highest priority.</p>
+            </div>
             <div className="item-grid">
               {items.map((item) => (
                 <div
@@ -209,8 +211,10 @@ export default function Participate() {
         {/* Step 2: Pick Worst */}
         {step === 2 && (
           <div>
-            <h2>Which item is least important?</h2>
-            <p>Select the single item you consider the lowest priority.</p>
+            <div className="rating-sticky-header">
+              <h2>Which item is least important?</h2>
+              <p>Select the single item you consider the lowest priority.</p>
+            </div>
             <div className="item-grid">
               {items.map((item) => (
                 <div
@@ -238,14 +242,24 @@ export default function Participate() {
         {/* Step 3: Best-to-Others ratings */}
         {step === 3 && (
           <div>
-            <h2>How much more important is "{bestItem}"?</h2>
-            <p>
-              Select how much more important <strong>{bestItem}</strong> is
-              compared to each other item.
-            </p>
+            <div className="rating-sticky-header">
+              <h2>How much more important is "{bestItem}"?</h2>
+              <p>
+                Select how much more important <strong>{bestItem}</strong> is
+                compared to each other item.
+              </p>
+            </div>
             {othersFromBest.map((item) => (
               <div className="rating-row" key={item}>
-                <span className="rating-item-name" title={descMap[item] || undefined}>{item}</span>
+                <span className={`rating-item-name${descMap[item] ? " has-tooltip" : ""}`}>
+                  {item}
+                  {descMap[item] && (
+                    <>
+                      <span className="tooltip-icon"> ⓘ</span>
+                      <span className="tooltip-popup">{descMap[item]}</span>
+                    </>
+                  )}
+                </span>
                 <LinguisticScale
                   value={bestToOthers[item] || null}
                   onChange={(v) =>
@@ -260,14 +274,24 @@ export default function Participate() {
         {/* Step 4: Others-to-Worst ratings */}
         {step === 4 && (
           <div>
-            <h2>How much more important is each item than "{worstItem}"?</h2>
-            <p>
-              Select how much more important each item is compared to{" "}
-              <strong>{worstItem}</strong>.
-            </p>
+            <div className="rating-sticky-header">
+              <h2>How much more important is each item than "{worstItem}"?</h2>
+              <p>
+                Select how much more important each item is compared to{" "}
+                <strong>{worstItem}</strong>.
+              </p>
+            </div>
             {othersFromWorst.map((item) => (
               <div className="rating-row" key={item}>
-                <span className="rating-item-name" title={descMap[item] || undefined}>{item}</span>
+                <span className={`rating-item-name${descMap[item] ? " has-tooltip" : ""}`}>
+                  {item}
+                  {descMap[item] && (
+                    <>
+                      <span className="tooltip-icon"> ⓘ</span>
+                      <span className="tooltip-popup">{descMap[item]}</span>
+                    </>
+                  )}
+                </span>
                 <LinguisticScale
                   value={othersToWorst[item] || null}
                   onChange={(v) =>

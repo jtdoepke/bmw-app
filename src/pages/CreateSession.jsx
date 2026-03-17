@@ -17,7 +17,7 @@ export default function CreateSession() {
   };
 
   const addItem = () => {
-    if (items.length < 15) setItems((prev) => [...prev, emptyItem()]);
+    setItems((prev) => [...prev, emptyItem()]);
   };
 
   const removeItem = (index) => {
@@ -37,11 +37,6 @@ export default function CreateSession() {
       setError("Please enter at least 3 items with titles.");
       return;
     }
-    if (filled.length > 15) {
-      setError("Please limit to 15 items or fewer for practical comparisons.");
-      return;
-    }
-
     const titles = filled.map((i) => i.title);
     if (new Set(titles).size < titles.length) {
       setError("Duplicate item titles found. Please make each title unique.");
@@ -131,7 +126,6 @@ export default function CreateSession() {
             type="button"
             className="btn btn-sm btn-outline add-item-btn"
             onClick={addItem}
-            disabled={items.length >= 15}
           >
             + Add Item
           </button>
@@ -143,7 +137,7 @@ export default function CreateSession() {
                 participant
               </>
             ) : (
-              "Enter 3–15 items"
+              "Enter at least 3 items"
             )}
           </p>
         </div>
