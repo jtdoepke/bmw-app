@@ -10,8 +10,14 @@ export default async function handler(req, res) {
   try {
     const { title, items } = req.body;
 
-    if (!title || !items || !Array.isArray(items) || items.length < 3) {
-      return res.status(400).json({ error: "Title and at least 3 items required" });
+    if (!title || !items || !Array.isArray(items)) {
+      return res.status(400).json({ error: "Title and items array required" });
+    }
+
+    const cleanItems = [...new Set(items.map((i) => String(i).trim()).filter(Boolean))];
+
+    if (cleanItems.length < 3) {
+      return res.status(400).json({ error: "At least 3 unique items required" });
     }
 
     const sessionId = randomUUID().slice(0, 8);
@@ -24,7 +30,7 @@ export default async function handler(req, res) {
           SK: "META",
           sessionId,
           title,
-          items,
+          items: cleanItems,
           createdAt: new Date().toISOString(),
         },
       })

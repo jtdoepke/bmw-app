@@ -27,6 +27,12 @@ export default function CreateSession() {
       return;
     }
 
+    const uniqueItems = [...new Set(items)];
+    if (uniqueItems.length < items.length) {
+      setError("Duplicate items found. Please remove duplicates.");
+      return;
+    }
+
     setError("");
     setLoading(true);
 
