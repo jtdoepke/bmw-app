@@ -103,6 +103,10 @@ export default function Results() {
     return { label: "Poor", cls: "poor" };
   };
 
+  const consistencyTooltip = "Measures how logically consistent the comparisons are. " +
+    "0% = perfectly consistent. " +
+    "Values over 100% indicate severe contradictions in the ratings.";
+
   return (
     <div>
       <h1>Results: {title}</h1>
@@ -143,7 +147,7 @@ export default function Results() {
           <div className="card" style={{ marginTop: "1.5rem" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
               <h2 style={{ marginBottom: 0 }}>Priority Rankings</h2>
-              <span className={`consistency ${consistencyLabel(avgConsistency).cls}`}>
+              <span className={`consistency ${consistencyLabel(avgConsistency).cls}`} title={consistencyTooltip}>
                 Consistency: {consistencyLabel(avgConsistency).label} ({(avgConsistency * 100).toFixed(0)}%)
               </span>
             </div>
@@ -256,7 +260,7 @@ export default function Results() {
                       const c = consistencyLabel(r.consistencyRatio);
                       return (
                         <td key={r.name} style={{ textAlign: "right", padding: "0.5rem 0.75rem" }}>
-                          <span className={`consistency ${c.cls}`} style={{ fontSize: "0.75rem" }}>
+                          <span className={`consistency ${c.cls}`} style={{ fontSize: "0.75rem" }} title={`${c.label} (${(r.consistencyRatio * 100).toFixed(0)}%) — ${consistencyTooltip}`}>
                             {c.label}
                           </span>
                         </td>

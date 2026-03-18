@@ -2,9 +2,17 @@
  * Best-Worst Method (BWM) Solver
  * Supports both crisp BWM (Rezaei 2015, 2016) and Fuzzy BWM (Guo & Zhao 2017).
  *
+ * Uses a linear programming solver (simplex method) to compute optimal weights.
+ * Consistency ratios use ratio-form deviations (|wB/wj - aBj|) from LP-optimal
+ * weights, divided by Rezaei's published Consistency Index (calibrated for the
+ * ratio form). The LP provides well-bounded weights that prevent the extreme
+ * ratios that geometric mean approximations produce with many items.
+ *
  * Crisp BWM uses a 1-9 integer scale.
  * Fuzzy BWM uses a 5-option linguistic scale mapped to Triangular Fuzzy Numbers.
  */
+
+import solver from "javascript-lp-solver";
 
 // Consistency Index table from Rezaei (2015)
 // Index corresponds to aBW value (1-9)
@@ -30,56 +38,145 @@ function isFuzzyInput(bestToOthers, othersToWorst) {
 }
 
 /**
- * Solve Fuzzy BWM: runs geometric mean approximation 3x (once per TFN component).
+ * Build and solve the BWM linear program for a single set of crisp ratings.
+ *
+ * LP formulation (Rezaei 2015):
+ *   min ξ
+ *   s.t. |wB - aBj·wj| ≤ ξ   for all j
+ *        |wj - ajW·wW| ≤ ξ   for all j
+ *        Σwj = 1,  wj ≥ 0,  ξ ≥ 0
+ *
+ * @param {string[]} items
+ * @param {string} bestItem
+ * @param {string} worstItem
+ * @param {Object} ratingsBO - { item: crisp_rating } for best-to-others
+ * @param {Object} ratingsOW - { item: crisp_rating } for others-to-worst
+ * @returns {{ weights: Object, xi: number }}
+ */
+function solveBWMLP(items, bestItem, worstItem, ratingsBO, ratingsOW) {
+  if (items.length <= 1) {
+    const weights = {};
+    for (const item of items) weights[item] = 1;
+    return { weights, xi: 0 };
+  }
+
+  const constraints = {};
+  const variables = {};
+
+  // Weight sum constraint
+  constraints["sum"] = { equal: 1 };
+
+  // Initialize xi variable (the objective to minimize)
+  variables["xi"] = { obj: 1, sum: 0 };
+
+  // Initialize weight variables
+  for (const item of items) {
+    const varName = `w_${item}`;
+    variables[varName] = { obj: 0, sum: 1 };
+  }
+
+  // Best-to-Others constraints: |wB - aBj·wj| ≤ ξ
+  for (const item of items) {
+    if (item === bestItem) continue;
+    const aBj = ratingsBO[item] || 1;
+    const upperName = `bo_u_${item}`;
+    const lowerName = `bo_l_${item}`;
+
+    // wB - aBj·wj - ξ ≤ 0
+    constraints[upperName] = { max: 0 };
+    variables[`w_${bestItem}`][upperName] = 1;
+    variables[`w_${item}`][upperName] = -aBj;
+    variables["xi"][upperName] = -1;
+
+    // aBj·wj - wB - ξ ≤ 0
+    constraints[lowerName] = { max: 0 };
+    variables[`w_${bestItem}`][lowerName] = -1;
+    variables[`w_${item}`][lowerName] = aBj;
+    variables["xi"][lowerName] = -1;
+  }
+
+  // Others-to-Worst constraints: |wj - ajW·wW| ≤ ξ
+  for (const item of items) {
+    if (item === worstItem) continue;
+    const ajW = ratingsOW[item] || 1;
+    const upperName = `ow_u_${item}`;
+    const lowerName = `ow_l_${item}`;
+
+    // wj - ajW·wW - ξ ≤ 0
+    constraints[upperName] = { max: 0 };
+    variables[`w_${item}`][upperName] = 1;
+    variables[`w_${worstItem}`][upperName] = -ajW;
+    variables["xi"][upperName] = -1;
+
+    // ajW·wW - wj - ξ ≤ 0
+    constraints[lowerName] = { max: 0 };
+    variables[`w_${item}`][lowerName] = -1;
+    variables[`w_${worstItem}`][lowerName] = ajW;
+    variables["xi"][lowerName] = -1;
+  }
+
+  const model = { optimize: "obj", opType: "min", constraints, variables };
+  const result = solver.Solve(model);
+
+  if (!result.feasible) {
+    return null;
+  }
+
+  const weights = {};
+  for (const item of items) {
+    weights[item] = result[`w_${item}`] || 0;
+  }
+  const xi = result.xi || 0;
+
+  return { weights, xi };
+}
+
+/**
+ * Solve Fuzzy BWM using LP solver, run 3 times (once per TFN component).
  * Returns crisp defuzzified weights plus the raw fuzzy weight triplets.
  */
 function solveFuzzyBWM(items, bestItem, worstItem, bestToOthers, othersToWorst) {
-  // For each TFN component index (0=l, 1=m, 2=u), compute weights.
-  // BO vector: w ∝ 1/TFN(aBj). For lower bound of weight, use upper bound of rating (and vice versa).
-  // OW vector: w ∝ TFN(ajW). Lower maps to lower directly.
-  const componentWeights = [null, null, null]; // [l, m, u] each is { item: weight }
+  const componentWeights = [null, null, null];
+  const componentRatingsBO = [null, null, null];
+  const componentRatingsOW = [null, null, null];
 
   for (let c = 0; c < 3; c++) {
     // For BO: to get weight component c, use rating component (2-c) for l/u swap
-    // c=0 (lower weight) → use rating component 2 (upper, larger divisor → smaller weight)
+    // c=0 (lower weight) → use rating component 2 (upper, tighter constraint → lower weights)
     // c=1 (modal weight) → use rating component 1 (modal)
-    // c=2 (upper weight) → use rating component 0 (lower, smaller divisor → larger weight)
+    // c=2 (upper weight) → use rating component 0 (lower, looser constraint → higher weights)
     const boComponent = 2 - c;
 
-    const rawBO = {};
-    let sumBO = 0;
+    // Extract crisp ratings for this TFN component
+    const crispBO = {};
     for (const item of items) {
-      const rating = item === bestItem ? 1 : (bestToOthers[item] || 1);
+      if (item === bestItem) continue;
+      const rating = bestToOthers[item] || 1;
       const tfn = FUZZY_SCALE[rating] || [rating, rating, rating];
-      rawBO[item] = 1 / tfn[boComponent];
-      sumBO += rawBO[item];
+      crispBO[item] = tfn[boComponent];
     }
 
-    // For OW: component maps directly (l→l, m→m, u→u)
-    const rawOW = {};
-    let sumOW = 0;
+    const crispOW = {};
     for (const item of items) {
-      const rating = item === worstItem ? 1 : (othersToWorst[item] || 1);
+      if (item === worstItem) continue;
+      const rating = othersToWorst[item] || 1;
       const tfn = FUZZY_SCALE[rating] || [rating, rating, rating];
-      rawOW[item] = tfn[c];
-      sumOW += rawOW[item];
+      crispOW[item] = tfn[c];
     }
 
-    // Geometric mean combination + normalize
-    const combined = {};
-    let sumCombined = 0;
-    for (const item of items) {
-      const wBO = rawBO[item] / sumBO;
-      const wOW = rawOW[item] / sumOW;
-      combined[item] = Math.sqrt(wBO * wOW);
-      sumCombined += combined[item];
-    }
+    componentRatingsBO[c] = crispBO;
+    componentRatingsOW[c] = crispOW;
 
-    const weights = {};
-    for (const item of items) {
-      weights[item] = combined[item] / sumCombined;
+    const result = solveBWMLP(items, bestItem, worstItem, crispBO, crispOW);
+
+    if (!result) {
+      // Fallback: equal weights
+      const w = {};
+      for (const item of items) w[item] = 1 / items.length;
+      componentWeights[c] = w;
+    } else {
+      componentWeights[c] = result.weights;
     }
-    componentWeights[c] = weights;
   }
 
   // Ensure l ≤ m ≤ u for each item (numerical stability)
@@ -104,19 +201,25 @@ function solveFuzzyBWM(items, bestItem, worstItem, bestToOthers, othersToWorst) 
     weights[item] = crisp[item] / sumCrisp;
   }
 
-  // Fuzzy consistency ratio (using modal component)
-  const wBm = componentWeights[1][bestItem];
-  const wWm = componentWeights[1][worstItem];
+  // Consistency ratio: ratio-form deviations from modal LP weights
+  const modalW = componentWeights[1];
+  const modalBO = componentRatingsBO[1];
+  const modalOW = componentRatingsOW[1];
   let xi = 0;
   for (const item of items) {
-    const aBj = item === bestItem ? 1 : (bestToOthers[item] || 1);
-    const ajW = item === worstItem ? 1 : (othersToWorst[item] || 1);
-    const tfnBj = FUZZY_SCALE[aBj] || [aBj, aBj, aBj];
-    const tfnJW = FUZZY_SCALE[ajW] || [ajW, ajW, ajW];
-    xi = Math.max(xi, Math.abs(wBm - tfnBj[1] * componentWeights[1][item]));
-    xi = Math.max(xi, Math.abs(componentWeights[1][item] - tfnJW[1] * wWm));
+    if (item !== bestItem) {
+      const aBj = modalBO[item] || 1;
+      if (modalW[item] > 0) {
+        xi = Math.max(xi, Math.abs(modalW[bestItem] / modalW[item] - aBj));
+      }
+    }
+    if (item !== worstItem) {
+      const ajW = modalOW[item] || 1;
+      if (modalW[worstItem] > 0) {
+        xi = Math.max(xi, Math.abs(modalW[item] / modalW[worstItem] - ajW));
+      }
+    }
   }
-
   const aBW = bestToOthers[worstItem] || 1;
   const ci = FUZZY_CI[aBW] || 1;
   const consistencyRatio = ci > 0 ? xi / ci : 0;
@@ -139,51 +242,32 @@ export function solveBWM(items, bestItem, worstItem, bestToOthers, othersToWorst
   if (isFuzzyInput(bestToOthers, othersToWorst)) {
     return solveFuzzyBWM(items, bestItem, worstItem, bestToOthers, othersToWorst);
   }
-  const n = items.length;
 
-  // Compute raw weights from Best-to-Others vector: w_j ∝ 1/a_Bj
-  const rawBO = {};
-  let sumBO = 0;
-  for (const item of items) {
-    const aBj = item === bestItem ? 1 : (bestToOthers[item] || 1);
-    rawBO[item] = 1 / aBj;
-    sumBO += rawBO[item];
+  const result = solveBWMLP(items, bestItem, worstItem, bestToOthers, othersToWorst);
+
+  if (!result) {
+    // Fallback: equal weights
+    const weights = {};
+    for (const item of items) weights[item] = 1 / items.length;
+    return { weights, consistencyRatio: 0 };
   }
 
-  // Compute raw weights from Others-to-Worst vector: w_j ∝ a_jW
-  const rawOW = {};
-  let sumOW = 0;
-  for (const item of items) {
-    const ajW = item === worstItem ? 1 : (othersToWorst[item] || 1);
-    rawOW[item] = ajW;
-    sumOW += rawOW[item];
-  }
-
-  // Combine both vectors using geometric mean for robustness
-  const combined = {};
-  let sumCombined = 0;
-  for (const item of items) {
-    const wBO = rawBO[item] / sumBO;
-    const wOW = rawOW[item] / sumOW;
-    combined[item] = Math.sqrt(wBO * wOW);
-    sumCombined += combined[item];
-  }
-
-  // Normalize to get final weights
-  const weights = {};
-  for (const item of items) {
-    weights[item] = combined[item] / sumCombined;
-  }
-
-  // Compute consistency ratio
-  const wB = weights[bestItem];
-  const wW = weights[worstItem];
+  // Ratio-form deviations from LP-optimal weights
+  const { weights } = result;
   let xi = 0;
   for (const item of items) {
-    const aBj = item === bestItem ? 1 : (bestToOthers[item] || 1);
-    const ajW = item === worstItem ? 1 : (othersToWorst[item] || 1);
-    xi = Math.max(xi, Math.abs(wB - aBj * weights[item]));
-    xi = Math.max(xi, Math.abs(weights[item] - ajW * wW));
+    if (item !== bestItem) {
+      const aBj = bestToOthers[item] || 1;
+      if (weights[item] > 0) {
+        xi = Math.max(xi, Math.abs(weights[bestItem] / weights[item] - aBj));
+      }
+    }
+    if (item !== worstItem) {
+      const ajW = othersToWorst[item] || 1;
+      if (weights[worstItem] > 0) {
+        xi = Math.max(xi, Math.abs(weights[item] / weights[worstItem] - ajW));
+      }
+    }
   }
 
   const aBW = bestToOthers[worstItem] || 1;

@@ -50,7 +50,7 @@ Requires a `.env` file with `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_R
 
 The solver (`src/lib/bwm-solver.js`) supports two modes, auto-detected from input values:
 
-**Fuzzy BWM** (current default): Uses a 5-option linguistic scale mapped to Triangular Fuzzy Numbers (TFNs). Valid rating values are `{1, 2, 4, 6, 9}`, stored as integers in DynamoDB. The solver runs a geometric mean approximation 3 times (once per TFN component: lower, modal, upper), defuzzifies via Center of Gravity `(l + m + u) / 3`, then normalizes. Returns both crisp weights and fuzzy weight triplets `[l, m, u]` per item.
+**Fuzzy BWM** (current default): Uses a 5-option linguistic scale mapped to Triangular Fuzzy Numbers (TFNs). Valid rating values are `{1, 2, 4, 6, 9}`, stored as integers in DynamoDB. The solver uses a linear programming solver (`javascript-lp-solver`) to compute optimal weights 3 times (once per TFN component: lower, modal, upper), defuzzifies via Center of Gravity `(l + m + u) / 3`, then normalizes. Consistency ratios use ratio-form deviations (`|wB/wj - aBj|`) from LP-optimal weights. Returns both crisp weights and fuzzy weight triplets `[l, m, u]` per item.
 
 | Linguistic label | Stored value | TFN (l, m, u) |
 |---|---|---|
