@@ -63,7 +63,7 @@ body {
 }
 
 .header-inner {
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
   display: flex;
   align-items: center;
@@ -92,7 +92,7 @@ body {
 
 .main {
   flex: 1;
-  max-width: 1200px;
+  max-width: 1400px;
   width: 100%;
   margin: 0 auto;
   padding: 2.5rem 2rem 4rem;
@@ -357,10 +357,12 @@ textarea {
   position: relative;
 }
 
-.rating-item-name.has-tooltip {
+.rating-item-name.has-tooltip,
+.rating-sentence strong.has-tooltip {
   text-decoration: underline dotted var(--gray-300);
   text-underline-offset: 3px;
   cursor: help;
+  position: relative;
 }
 
 .tooltip-icon {
@@ -388,7 +390,8 @@ textarea {
   pointer-events: none;
 }
 
-.rating-item-name.has-tooltip:hover .tooltip-popup {
+.rating-item-name.has-tooltip:hover .tooltip-popup,
+.rating-sentence strong.has-tooltip:hover .tooltip-popup {
   display: block;
 }
 
@@ -459,6 +462,61 @@ textarea {
   background: var(--navy);
   border-color: var(--navy);
   color: var(--white);
+}
+
+/* ── Color gradient per button position (1=low end, 5=high end) ── */
+.linguistic-btn-pos-1 { background: hsl(210, 25%, 96%); }
+.linguistic-btn-pos-2 { background: hsl(190, 20%, 95%); }
+.linguistic-btn-pos-3 { background: hsl(60, 15%, 95%); }
+.linguistic-btn-pos-4 { background: hsl(45, 30%, 94%); }
+.linguistic-btn-pos-5 { background: hsl(40, 50%, 92%); }
+
+.linguistic-btn-pos-1:hover { background: hsl(210, 25%, 92%); }
+.linguistic-btn-pos-2:hover { background: hsl(190, 20%, 91%); }
+.linguistic-btn-pos-3:hover { background: hsl(60, 15%, 91%); }
+.linguistic-btn-pos-4:hover { background: hsl(45, 30%, 90%); }
+.linguistic-btn-pos-5:hover { background: hsl(40, 50%, 88%); }
+
+/* Active state overrides gradient */
+.linguistic-btn.active.linguistic-btn-pos-1,
+.linguistic-btn.active.linguistic-btn-pos-2,
+.linguistic-btn.active.linguistic-btn-pos-3,
+.linguistic-btn.active.linguistic-btn-pos-4,
+.linguistic-btn.active.linguistic-btn-pos-5 {
+  background: var(--navy);
+}
+
+/* ── Scale endpoint labels ── */
+.scale-endpoint-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.72rem;
+  color: var(--gray-400);
+  font-style: italic;
+  margin-bottom: 0.25rem;
+  padding: 0.25rem 0;
+  border-bottom: 1px solid var(--gray-100);
+}
+
+/* ── Contextual sentence fragments ── */
+.rating-sentence {
+  font-size: 0.88rem;
+  color: var(--gray-700);
+  white-space: nowrap;
+  position: relative;
+}
+
+.rating-sentence strong {
+  color: var(--navy);
+  font-weight: 600;
+}
+
+/* ── Zebra-striped rating rows ── */
+.rating-row:nth-child(even) {
+  background-color: var(--gray-100);
+  border-radius: 6px;
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
 }
 
 .scale-labels {
@@ -695,6 +753,10 @@ textarea {
     min-width: auto;
   }
 
+  .rating-sentence {
+    white-space: normal;
+  }
+
   .rating-scale {
     justify-content: flex-start;
   }
@@ -709,6 +771,10 @@ textarea {
   }
 
   .scale-labels {
+    padding: 0;
+  }
+
+  .scale-endpoint-labels {
     padding: 0;
   }
 

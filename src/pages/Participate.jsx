@@ -28,17 +28,18 @@ function Stepper({ current }) {
   );
 }
 
-function LinguisticScale({ value, onChange }) {
+function LinguisticScale({ value, onChange, reversed }) {
+  const options = reversed ? [...LINGUISTIC_OPTIONS].reverse() : LINGUISTIC_OPTIONS;
   return (
     <div className="linguistic-scale">
-      {LINGUISTIC_OPTIONS.map((opt) => (
+      {options.map((opt, i) => (
         <button
           key={opt.value}
-          className={`linguistic-btn ${value === opt.value ? "active" : ""}`}
+          className={`linguistic-btn linguistic-btn-pos-${i + 1} ${value === opt.value ? "active" : ""}`}
           onClick={() => onChange(opt.value)}
           type="button"
         >
-          {opt.label}
+          {value === opt.value ? "✓ " : ""}{opt.label}
         </button>
       ))}
     </div>
@@ -249,23 +250,34 @@ export default function Participate() {
                 compared to each other item.
               </p>
             </div>
+            <div className="scale-endpoint-labels">
+              <span>← Very different</span>
+              <span>Similar →</span>
+            </div>
             {othersFromBest.map((item) => (
               <div className="rating-row" key={item}>
-                <span className={`rating-item-name${descMap[item] ? " has-tooltip" : ""}`}>
-                  {item}
-                  {descMap[item] && (
-                    <>
-                      <span className="tooltip-icon"> ⓘ</span>
-                      <span className="tooltip-popup">{descMap[item]}</span>
-                    </>
-                  )}
+                <span className="rating-sentence">
+                  <strong>{bestItem}</strong> is
                 </span>
                 <LinguisticScale
                   value={bestToOthers[item] || null}
                   onChange={(v) =>
                     setBestToOthers((prev) => ({ ...prev, [item]: v }))
                   }
+                  reversed
                 />
+                <span className="rating-sentence">
+                  more important than{" "}
+                  <strong className={descMap[item] ? "has-tooltip" : ""}>
+                    {item}
+                    {descMap[item] && (
+                      <>
+                        <span className="tooltip-icon"> ⓘ</span>
+                        <span className="tooltip-popup">{descMap[item]}</span>
+                      </>
+                    )}
+                  </strong>
+                </span>
               </div>
             ))}
           </div>
@@ -281,23 +293,33 @@ export default function Participate() {
                 <strong>{worstItem}</strong>.
               </p>
             </div>
+            <div className="scale-endpoint-labels">
+              <span>← Very different</span>
+              <span>Similar →</span>
+            </div>
             {othersFromWorst.map((item) => (
               <div className="rating-row" key={item}>
-                <span className={`rating-item-name${descMap[item] ? " has-tooltip" : ""}`}>
-                  {item}
-                  {descMap[item] && (
-                    <>
-                      <span className="tooltip-icon"> ⓘ</span>
-                      <span className="tooltip-popup">{descMap[item]}</span>
-                    </>
-                  )}
+                <span className="rating-sentence">
+                  <strong className={descMap[item] ? "has-tooltip" : ""}>
+                    {item}
+                    {descMap[item] && (
+                      <>
+                        <span className="tooltip-icon"> ⓘ</span>
+                        <span className="tooltip-popup">{descMap[item]}</span>
+                      </>
+                    )}
+                  </strong>{" "}is
                 </span>
                 <LinguisticScale
                   value={othersToWorst[item] || null}
                   onChange={(v) =>
                     setOthersToWorst((prev) => ({ ...prev, [item]: v }))
                   }
+                  reversed
                 />
+                <span className="rating-sentence">
+                  more important than <strong>{worstItem}</strong>
+                </span>
               </div>
             ))}
           </div>
