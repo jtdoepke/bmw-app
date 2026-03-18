@@ -1,6 +1,6 @@
 # Best·Worst — Group Prioritization Tool
 
-A web app implementing the **Best-Worst Method (BWM)** for multi-criteria group decision-making. Create a session, share a link with participants, and get statistically aggregated priority rankings.
+A web app implementing the **Fuzzy Best-Worst Method (BWM)** for multi-criteria group decision-making. Create a session, share a link with participants, and get statistically aggregated priority rankings with fuzzy uncertainty ranges.
 
 ## How It Works
 
@@ -9,9 +9,9 @@ A web app implementing the **Best-Worst Method (BWM)** for multi-criteria group 
 3. **Participants respond** — Each person completes a guided 6-step wizard:
    - Pick the most important item
    - Pick the least important item
-   - Rate how the best compares to all others (1–9 scale)
-   - Rate how all others compare to the worst (1–9 scale)
-4. **View results** — Aggregated priority weights, consistency scores, and individual breakdowns
+   - Rate how the best compares to all others using a 5-point linguistic scale (Equal → Absolutely more)
+   - Rate how all others compare to the worst using the same scale
+4. **View results** — Aggregated priority weights with fuzzy uncertainty ranges, consistency scores, and individual breakdowns
 
 BWM requires only **2n − 3** comparisons per person (vs n(n−1)/2 for full pairwise), making it practical even with 10+ items.
 
@@ -113,7 +113,7 @@ vercel
 # Set environment variables
 vercel env add AWS_ACCESS_KEY_ID        # paste your access key
 vercel env add AWS_SECRET_ACCESS_KEY    # paste your secret key
-vercel env add AWS_REGION               # e.g. us-east-1
+vercel env add AWS_REGION               # e.g. us-east-2
 vercel env add DYNAMODB_TABLE           # bwm-sessions
 
 # Redeploy with the environment variables
@@ -128,7 +128,7 @@ vercel --prod
 4. In **Environment Variables**, add:
    - `AWS_ACCESS_KEY_ID` — your IAM user's access key
    - `AWS_SECRET_ACCESS_KEY` — your IAM user's secret key
-   - `AWS_REGION` — the region your DynamoDB table is in (e.g. `us-east-1`)
+   - `AWS_REGION` — the region your DynamoDB table is in (e.g. `us-east-2`)
    - `DYNAMODB_TABLE` — `bwm-sessions`
 5. Click **Deploy**
 
@@ -217,6 +217,8 @@ The **Best-Worst Method** (Rezaei, 2015) works by:
 4. An optimization model finds weights that minimize the maximum deviation from perfect consistency
 
 This implementation uses a geometric mean approximation of the two comparison vectors, which is computationally simple and produces results very close to the full linear programming solution.
+
+**Fuzzy BWM**: This app uses the **Fuzzy BWM** extension, where participants rate comparisons on a 5-option linguistic scale (Equal, Slightly more, Moderately more, Strongly more, Absolutely more). Each label maps to a Triangular Fuzzy Number (TFN). The solver runs the geometric mean approximation three times (once per TFN component: lower, modal, upper), then defuzzifies via Center of Gravity `(l + m + u) / 3` to produce crisp weights. Results display both defuzzified weights and fuzzy uncertainty ranges `[l%–u%]`. Legacy sessions using integer 1–9 ratings are auto-detected and solved with the original crisp method.
 
 **Consistency Ratio**: A value from 0 to 1 where lower is better. Below 0.25 is considered highly consistent. The app labels results as Excellent (≤0.10), Good (≤0.25), Fair (≤0.40), or Poor (>0.40).
 
